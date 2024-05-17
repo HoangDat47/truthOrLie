@@ -1,37 +1,51 @@
 import tensorflow as tf
+from tensorflow import keras
+from keras.models import model_from_json
 import json
 import numpy as np
 import cv2
+import pandas as pd
+
 MAX_SEQ_LENGTH = 20
 NUM_FEATURES = 2048
 
-# Tải mô hình từ file JSON và H5
-with open('sequence_model.json', 'r') as json_file:
-    model_json = json_file.read()
+# Đọc mô hình từ file JSON
+json_file = open("sequence_model.json", "r")
+model_json = json_file.read()
+json_file.close()
+sequence_model = model_from_json(model_json)
 
-model = tf.keras.models.model_from_json(model_json)
-model.load_weights('sequence_model.h5')
+# Load trọng số cho sequence_model từ file "sequence_model.h5"
+sequence_model.load_weights("sequence_model.h5")
 
-# Hàm xử lý video frames
-def prepare_single_video(frames, MAX_SEQ_LENGTH, NUM_FEATURES):
+# Danh sách lớp
+class_vocab = ["lie", "truth"]
+
+# Hàm chuẩn bị dữ liệu cho mỗi video
+def prepare_single_video(frames):
     frames = frames[None, ...]
-    frame_mask = np.zeros(shape=(1, MAX_SEQ_LENGTH), dtype="bool")
+    frame_mask = np.zeros(shape=(1, MAX_SEQ_LENGTH,), dtype="bool")
     frame_features = np.zeros(shape=(1, MAX_SEQ_LENGTH, NUM_FEATURES), dtype="float32")
 
-    for i in range(len(frames)):
-        if i >= MAX_SEQ_LENGTH:
-            break  # Chỉ xử lý MAX_SEQ_LENGTH frame đầu tiên
-
-        frame = cv2.resize(frames[i], (224, 224))  # Đảm bảo kích thước frame phù hợp với input của ResNet50
-        frame = np.expand_dims(frame, axis=0)  # Thêm chiều batch
-        frame = tf.keras.applications.resnet50.preprocess_input(frame)  # Tiền xử lý frame
-        frame_features[0, i, :] = feature_extractor.predict(frame)  # Trích xuất đặc trưng từ frame
-        frame_mask[0, i] = 1  # Đánh dấu frame không bị mask
+    for i, batch in enumerate(frames):
+        video_length = batch.shape[0]
+        length = min(MAX_SEQ_LENGTH, video_length)
+        for j in range(length):
+            frame_features[i, j, :] = feature_extractor.predict(batch[None, j, :])
+        frame_mask[i, :length] = 1  # 1 = not masked, 0 = masked
 
     return frame_features, frame_mask
 
+# Hàm dự đoán lớp của video
+def sequence_prediction(path):
+    frames = load_video(path)  # Đọc video
+    frame_features, frame_mask = prepare_single_video(frames)  # Chuẩn bị dữ liệu cho mô hình
+    probabilities = sequence_model.predict([frame_features, frame_mask])[0]  # Dự đoán
 
-# Hàm load video
+    for i in np.argsort(probabilities)[::-1]:
+        print(f"  {class_vocab[i]}: {probabilities[i] * 100:5.2f}%")
+    return frames
+
 def load_video(video_path):
     cap = cv2.VideoCapture(video_path)
     frames = []
@@ -39,36 +53,21 @@ def load_video(video_path):
         ret, frame = cap.read()
         if not ret:
             break
-        frame = cv2.resize(frames[i], (224, 224))
-        print(frames[i].shape)
-
+        frame = cv2.resize(frame, (224, 224))  # Đảm bảo kích thước frame phù hợp với input của mô hình
         frames.append(frame)
     cap.release()
     frames = np.array(frames)
     return frames
 
-# Hàm kiểm tra nói dối
-def check_lie(video_path, model, MAX_SEQ_LENGTH, NUM_FEATURES, class_vocab):
-    frames = load_video(video_path)
-    frame_features, frame_mask = prepare_single_video(frames, MAX_SEQ_LENGTH, NUM_FEATURES)
 
-    probabilities = model.predict([frame_features, frame_mask])[0]
+# Danh sách video cần kiểm tra
+test_df = pd.DataFrame({
+    "video_name": ["lie.mp4", "true.mp4"]  # Thay đổi danh sách video cần kiểm tra tùy thuộc vào dữ liệu thực tế
+})
 
-    # In kết quả
-    for i in np.argsort(probabilities)[::-1]:
-        print(f"{class_vocab[i]}: {probabilities[i] * 100:.2f}%")
+# Chọn một video ngẫu nhiên từ danh sách
+test_video = np.random.choice(test_df["video_name"].values.tolist())
+print(f"Test video path: {test_video}")
 
-    return probabilities
-
-# Đường dẫn đến video thử nghiệm
-test_video_path = 'lie.mp4'  # Điều chỉnh đường dẫn tới video của bạn
-
-# Vocabulary lớp (điều chỉnh theo mô hình của bạn)
-class_vocab = ['lie', 'truth']
-
-# Kiểm tra nói dối
-probabilities = check_lie(test_video_path, model, MAX_SEQ_LENGTH, NUM_FEATURES, class_vocab)
-
-# In kết quả
-for i in np.argsort(probabilities)[::-1]:
-    print(f"{class_vocab[i]}: {probabilities[i] * 100:.2f}%")
+# Kiểm tra video đã chọn
+test_frames = sequence_prediction(test_video)
