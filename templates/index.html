@@ -1,33 +1,39 @@
-{% extends "base.html" %} 
+{% extends "base.html" %}
 {% block content %}
 
 <h2>Lie/Truth Checking</h2>
 
-<div>
-    <form id="upload-file" method="post" enctype="multipart/form-data">
-        <label for="videoUpload" class="upload-label">
-            Choose...
-        </label>
-        <input type="file" name="file" id="videoUpload" accept=".mp4, .avi, .wmv, .mkv, .vob, .flv, .webm">
-    </form>
+<div class="container">
+    <div>
+        <form id="upload-file" method="post" enctype="multipart/form-data">
+            <label for="videoUpload" class="upload-label">
+                Choose...
+            </label>
+            <input type="file" name="file" id="videoUpload" accept=".mp4, .avi, .wmv, .mkv, .vob, .flv, .webm">
+        </form>
 
-    <div class="video-section" style="display:none;">
-        <div class="video-preview">
-            <video id="videoPreview" controls style="width:100%; max-width:600px; display: none;">
-                Your browser does not support the video tag.
-            </video>
+        <div class="row">
+            <div class="col-md-6 video-section" style="display:none;">
+                <div class="video-preview">
+                    <video id="videoPreview" controls style="width:100%; max-width:1200px; display: none;">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-primary btn-lg" id="btn-predict">Predict!</button>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="loader" style="display:none;"></div>
+
+                <h3 id="result">
+                    <span> </span>
+                </h3>
+            </div>
         </div>
-        <div>
-            <button type="button" class="btn btn-primary btn-lg" id="btn-predict">Predict!</button>
-        </div>
+
     </div>
-
-    <div class="loader" style="display:none;"></div>
-
-    <h3 id="result">
-        <span> </span>
-    </h3>
-
 </div>
 
 {% endblock %}

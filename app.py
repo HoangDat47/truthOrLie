@@ -6,15 +6,15 @@ import glob
 import re
 import numpy as np
 import cv2
+import json
 
 # tensorflow
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import model_from_json
-import json
 
 # Flask utils
-from flask import Flask, redirect, url_for, request, render_template
+from flask import Flask, redirect, url_for, request, render_template, jsonify
 from werkzeug.utils import secure_filename
 from gevent.pywsgi import WSGIServer
 
@@ -30,6 +30,8 @@ json_file = open("sequence_model.json", "r")
 model_json = json_file.read()
 json_file.close()
 sequence_model = model_from_json(model_json)
+sequence_model.load_weights("sequence_model.h5")
+
 class_vocab = ["lie", "truth"]
 
 print('Model loaded. Check http://127.0.0.1:5000/')
@@ -65,10 +67,8 @@ def sequence_prediction(path):
     frame_features, frame_mask = prepare_single_video(frames)  # Chuẩn bị dữ liệu cho mô hình
     probabilities = sequence_model.predict([frame_features, frame_mask])[0]  # Dự đoán
 
-    for i in np.argsort(probabilities)[::-1]:
-        print(f"  {class_vocab[i]}: {probabilities[i] * 100:5.2f}%")
-        result = (f"  {class_vocab[0]}: {probabilities[0] * 100:5.2f}% and {class_vocab[1]}: {probabilities[1] * 100:5.2f}%")
-    return result
+    results = {class_vocab[0]: probabilities[0] * 100, class_vocab[1]: probabilities[1] * 100}
+    return results
 
 def load_video(video_path):
     cap = cv2.VideoCapture(video_path)
@@ -89,27 +89,25 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/predict', methods=['GET', 'POST'])
+@app.route('/predict', methods=['POST'])
 def upload():
     if request.method == 'POST':
         # Get the file from post request
         f = request.files['file']
 
-        # Ensure the uploads directory exists
+        # Save the file to a temporary location
         basepath = os.path.dirname(__file__)
-        upload_path = os.path.join(basepath, 'uploads')
-        if not os.path.exists(upload_path):
-            os.makedirs(upload_path)
-
-        # Save the file to ./uploads
-        file_path = os.path.join(upload_path, secure_filename(f.filename))
+        file_path = os.path.join(basepath, secure_filename(f.filename))
         f.save(file_path)
 
         # Make prediction
         result = sequence_prediction(file_path)
-        return result
-    return None
 
+        # Remove the file after prediction
+        os.remove(file_path)
+
+        return jsonify(result)
+    return None
 
 if __name__ == '__main__':
     app.run(debug=True)
