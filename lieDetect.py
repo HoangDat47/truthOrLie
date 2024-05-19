@@ -21,6 +21,18 @@ sequence_model.load_weights("sequence_model.h5")
 # Danh sách lớp
 class_vocab = ["lie", "truth"]
 
+# # Tạo một mô hình ResNet50 không bao gồm lớp đầu ra (include_top=False)
+# base_model = tf.keras.applications.ResNet50(weights='imagenet', include_top=False)
+
+# # Tạo một lớp global average pooling layer để chuyển đổi đầu ra của ResNet50 thành đặc trưng
+# global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
+
+# # Kết hợp ResNet50 và lớp global average pooling layer để tạo ra một feature extractor
+# feature_extractor = tf.keras.Sequential([
+#     base_model,
+#     global_average_layer
+# ])
+
 # Hàm chuẩn bị dữ liệu cho mỗi video
 def prepare_single_video(frames):
     frames = frames[None, ...]
@@ -62,7 +74,7 @@ def load_video(video_path):
 
 # Danh sách video cần kiểm tra
 test_df = pd.DataFrame({
-    "video_name": ["lie.mp4", "true.mp4"]  # Thay đổi danh sách video cần kiểm tra tùy thuộc vào dữ liệu thực tế
+    "video_name": ["lie.mp4", "true.mp4", "trial_lie_052_007.mp4"]  # Thay đổi danh sách video cần kiểm tra tùy thuộc vào dữ liệu thực tế
 })
 
 # Chọn một video ngẫu nhiên từ danh sách
