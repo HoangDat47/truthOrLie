@@ -7,8 +7,9 @@ import re
 import numpy as np
 import cv2
 import json
+import random
 
-# tensorflow
+# TensorFlow
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import model_from_json
@@ -18,7 +19,15 @@ from flask import Flask, redirect, url_for, request, render_template, jsonify
 from werkzeug.utils import secure_filename
 from gevent.pywsgi import WSGIServer
 
-# Define a flask app
+# Set random seed for reproducibility
+def set_seed(seed=42):
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
+    random.seed(seed)
+
+set_seed()
+
+# Define a Flask app
 app = Flask(__name__)
 
 # Model saved with Keras model.save()
@@ -26,6 +35,7 @@ MAX_SEQ_LENGTH = 20
 NUM_FEATURES = 2048
 MODEL_PATH = 'sequence_model.h5'
 
+# Load model
 json_file = open("sequence_model.json", "r")
 model_json = json_file.read()
 json_file.close()
@@ -36,13 +46,9 @@ class_vocab = ["lie", "truth"]
 
 print('Model loaded. Check http://127.0.0.1:5000/')
 
-# Tạo một mô hình ResNet50 không bao gồm lớp đầu ra (include_top=False)
+# Create feature extractor
 base_model = tf.keras.applications.ResNet50(weights='imagenet', include_top=False)
-
-# Tạo một lớp global average pooling layer để chuyển đổi đầu ra của ResNet50 thành đặc trưng
 global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
-
-# Kết hợp ResNet50 và lớp global average pooling layer để tạo ra một feature extractor
 feature_extractor = tf.keras.Sequential([
     base_model,
     global_average_layer
@@ -70,10 +76,10 @@ def sequence_prediction(path):
     results = {class_vocab[0]: probabilities[0] * 100, class_vocab[1]: probabilities[1] * 100}
     return results
 
-def load_video(video_path):
+def load_video(video_path, max_frames=MAX_SEQ_LENGTH):
     cap = cv2.VideoCapture(video_path)
     frames = []
-    while cap.isOpened():
+    while cap.isOpened() and len(frames) < max_frames:
         ret, frame = cap.read()
         if not ret:
             break
@@ -87,7 +93,6 @@ def load_video(video_path):
 def index():
     # Main page
     return render_template('index.html')
-
 
 @app.route('/predict', methods=['POST'])
 def upload():
