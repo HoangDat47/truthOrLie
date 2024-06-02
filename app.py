@@ -46,8 +46,8 @@ class_vocab = ["lie", "truth"]
 
 print('Model loaded. Check http://127.0.0.1:5000/')
 
-# Create feature extractor
-base_model = tf.keras.applications.ResNet50(weights='imagenet', include_top=False)
+# Create feature extractor with InceptionV3
+base_model = tf.keras.applications.InceptionV3(weights='imagenet', include_top=False)
 global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
 feature_extractor = tf.keras.Sequential([
     base_model,

@@ -12,6 +12,7 @@ NUM_FEATURES = 2048
 # Đọc mô hình từ file JSON
 json_file = open("sequence_model.json", "r")
 model_json = json_file.read()
+
 json_file.close()
 sequence_model = model_from_json(model_json)
 
