@@ -1,23 +1,18 @@
 from __future__ import division, print_function
 # coding=utf-8
-import sys
 import os
-import glob
-import re
 import numpy as np
 import cv2
-import json
 import random
+import dlib #pip install dlib-19.22.99-cp310-cp310-win_amd64.whl
 
 # TensorFlow
 import tensorflow as tf
-from tensorflow import keras
 from keras.models import model_from_json
 
 # Flask utils
-from flask import Flask, redirect, url_for, request, render_template, jsonify
+from flask import Flask, request, render_template, jsonify
 from werkzeug.utils import secure_filename
-from gevent.pywsgi import WSGIServer
 
 # Set random seed for reproducibility
 def set_seed(seed=42):
@@ -34,6 +29,7 @@ app = Flask(__name__)
 MAX_SEQ_LENGTH = 20
 NUM_FEATURES = 2048
 MODEL_PATH = 'sequence_model.h5'
+IMG_SIZE = 224
 
 # Load model
 json_file = open("sequence_model.json", "r")
@@ -53,6 +49,42 @@ feature_extractor = tf.keras.Sequential([
     base_model,
     global_average_layer
 ])
+
+def extract_face(frame, resize=(IMG_SIZE, IMG_SIZE)):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    detector = dlib.get_frontal_face_detector()
+    faces = detector(gray)
+
+    if len(faces) == 0:
+        # If no face is detected, return None
+        return None
+
+    # Assuming we want to extract the first detected face
+    face = faces[0]
+    x, y, w, h = face.left(), face.top(), face.width(), face.height()
+
+    # Crop the face from the frame
+    face_image = frame[y:y+h, x:x+w]
+    face_image = cv2.resize(face_image, resize)
+
+    return face_image
+
+def load_video(path, max_frames=MAX_SEQ_LENGTH, resize=(IMG_SIZE, IMG_SIZE)):
+    cap = cv2.VideoCapture(path)
+    frames = []
+    while cap.isOpened() and len(frames) < max_frames:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        face_frame = extract_face(frame, resize)
+        if face_frame is not None:
+            face_frame = face_frame[:, :, [2, 1, 0]]  # Convert BGR to RGB
+            frames.append(face_frame)
+
+    cap.release()
+    frames = np.array(frames)
+    return frames
 
 def prepare_single_video(frames):
     frames = frames[None, ...]
@@ -75,19 +107,6 @@ def sequence_prediction(path):
 
     results = {class_vocab[0]: probabilities[0] * 100, class_vocab[1]: probabilities[1] * 100}
     return results
-
-def load_video(video_path, max_frames=MAX_SEQ_LENGTH):
-    cap = cv2.VideoCapture(video_path)
-    frames = []
-    while cap.isOpened() and len(frames) < max_frames:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frame = cv2.resize(frame, (224, 224))  # Đảm bảo kích thước frame phù hợp với input của mô hình
-        frames.append(frame)
-    cap.release()
-    frames = np.array(frames)
-    return frames
 
 @app.route('/', methods=['GET'])
 def index():
