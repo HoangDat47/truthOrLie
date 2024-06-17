@@ -28,15 +28,15 @@ app = Flask(__name__)
 # Model saved with Keras model.save()
 MAX_SEQ_LENGTH = 20
 NUM_FEATURES = 2048
-MODEL_PATH = 'sequence_model.h5'
+MODEL_PATH = 'model/old/sequence_model.h5'
 IMG_SIZE = 224
 
 # Load model
-json_file = open("sequence_model.json", "r")
+json_file = open("model/old/sequence_model.json", "r")
 model_json = json_file.read()
 json_file.close()
 sequence_model = model_from_json(model_json)
-sequence_model.load_weights("sequence_model.h5")
+sequence_model.load_weights("model/old/sequence_model.h5")
 
 class_vocab = ["lie", "truth"]
 
