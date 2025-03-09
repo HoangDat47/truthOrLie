@@ -45,7 +45,6 @@ truthOrLie/
 ├── model/           # ML models for lie detection
 ├── static/          # Static files (images, CSS, JS)
 ├── templates/       # HTML templates for UI
-│   ├── text.jpg     # Illustration image
 ├── video/           # Video resources
 ├── app.py           # Main application file
 ├── final_train.ipynb # ML training notebook
