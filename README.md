@@ -54,11 +54,6 @@ truthOrLie/
 └── README.md        # Project documentation
 ```
 
-## Illustration
-Below is an example of how the application works:
-
-![Illustration](templates/text.jpg)
-
 ## Contributing
 Feel free to contribute by submitting a pull request or reporting issues on GitHub.
 
